@@ -1,0 +1,3 @@
+# Rules file for testchar device driver
+KERNEL=="chardev", SUBSYSTEM=="test", MODE=="0666"
+
