@@ -1,5 +1,5 @@
 # kernel-modules
-Linux kernel modules samples.
+Kernel modules samples for GNU/Linux and FreeBSD OS.
 
 This repository contains the following samples:
 
