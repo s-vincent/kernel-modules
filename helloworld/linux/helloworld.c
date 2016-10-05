@@ -19,7 +19,7 @@
 
 /**
  * \file helloworld.c
- * \brief Hello world module.
+ * \brief Hello world kernel module for GNU/Linux.
  * \author Sebastien Vincent
  * \date 2016
  */
