@@ -42,7 +42,7 @@ static int cookie = 0;
  * \brief Module initialization.
  * 
  * Set up stuff when module is added.
- * \return 0 if success, other value for failure.
+ * \return 0 if success, negative value otherwise.
  */
 static int __init helloworld_init(void)
 {

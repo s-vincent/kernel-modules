@@ -101,7 +101,7 @@ static DEFINE_MUTEX(chardev_mutex);
  * \brief Open callback for character device.
  * \param inodep inode.
  * \param filep file.
- * \return 0 if success, other value for failure.
+ * \return 0 if success, negative value otherwise.
  */
 static int chardev_open(struct inode* inodep, struct file* filep)
 {
@@ -119,7 +119,7 @@ static int chardev_open(struct inode* inodep, struct file* filep)
  * \brief Release callback for character device.
  * \param inodep inode.
  * \param filep file.
- * \return 0 if success, other value for failure.
+ * \return 0 if success, negative value otherwise.
  */
 static int chardev_release(struct inode* inodep, struct file* filep)
 {
@@ -135,7 +135,7 @@ static int chardev_release(struct inode* inodep, struct file* filep)
  * \param buffer buffer to fill.
  * \param len length to read.
  * \param offset offset of the buffer.
- * \return number of character read.
+ * \return number of characters read, or negative value if failure.
  */
 static ssize_t chardev_read(struct file* filep, char* buffer, size_t len,
         loff_t* offset)
@@ -170,7 +170,7 @@ static ssize_t chardev_read(struct file* filep, char* buffer, size_t len,
  * \param buffer buffer that contains data to write.
  * \param len length to write.
  * \param offset offset of the buffer.
- * \return number of character read.
+ * \return number of characters written, or negative value if failure.
  */
 static ssize_t chardev_write(struct file* filep, const char* buffer,
         size_t len, loff_t* offset)
@@ -198,7 +198,7 @@ static ssize_t chardev_write(struct file* filep, const char* buffer,
  * \brief Module initialization.
  *
  * Set up stuff when module is added.
- * \return 0 if success, other value for failure.
+ * \return 0 if success, negative value otherwise.
  */
 static int __init chardev_init(void)
 {
