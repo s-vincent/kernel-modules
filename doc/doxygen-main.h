@@ -21,6 +21,8 @@
  * \section section-license License
  *
  * kernel-modules is licensed under the
+ * <a href="https://opensource.org/licenses/BSD-3-Clause">BSD 3-Clause</a>
+ * except Linux version of chardev module which is under 
  * <a href="http://www.gnu.org/licenses/gpl-2.0.html">GPLv2</a> license.
  */
 

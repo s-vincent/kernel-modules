@@ -1,20 +1,9 @@
 /*
- * helloworld - simple hello world Linux kernel module.
- * Copyright (C) 2016 Sebastien Vincent <sebastien.vincent@cppextrem.com>
+ * helloworld - simple hello world FreeBSD kernel module.
+ * Copyright (c) 2016, Sebastien Vincent
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Distributed under the terms of the BSD 3-clause License.
+ * See the LICENSE file for details.
  */
 
 /**
@@ -40,7 +29,7 @@ static int cookie = 0;
 
 /**
  * \brief Module initialization.
- * 
+ *
  * Set up stuff when module is added.
  * \return 0 if success, negative value otherwise.
  */
@@ -66,11 +55,11 @@ module_exit(helloworld_exit);
 
 /* parameters */
 module_param(name, charp, S_IRUGO);
-MODULE_PARM_DESC(name, "Name of the module"); 
-module_param(cookie, int, (S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)); 
-MODULE_PARM_DESC(cookie, "Cookie value"); 
+MODULE_PARM_DESC(name, "Name of the module");
+module_param(cookie, int, (S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR));
+MODULE_PARM_DESC(cookie, "Cookie value");
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Sebastien Vincent");
 MODULE_DESCRIPTION("HelloWorld module");
 MODULE_VERSION("0.1");
