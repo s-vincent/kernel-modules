@@ -46,10 +46,10 @@ static int helloworld_loader(struct module* m, int evt, void* arg)
   case MOD_LOAD:
     TUNABLE_STR_FETCH("helloworld.name", name, sizeof(name));
     TUNABLE_INT_FETCH("helloworld.cookie", &cookie);
-    uprintf("%s.%d: initialization\n", name, cookie);
+    printf("%s.%d: initialization\n", name, cookie);
     break;
   case MOD_UNLOAD:
-    uprintf("%s.%d: finalization\n", name, cookie);
+    printf("%s.%d: finalization\n", name, cookie);
     break;
   default:
     err = EOPNOTSUPP;
