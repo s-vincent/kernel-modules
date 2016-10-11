@@ -19,7 +19,7 @@
 
 /**
  * \file chardev.c
- * \brief Basic character device module.
+ * \brief Basic character device module for GNU/Linux.
  * \author Sebastien Vincent
  * \date 2016
  */
@@ -60,7 +60,7 @@ static int cookie = 0;
 /**
  * \brief File operations.
  */
-static struct file_operations fops = {NULL};
+static struct file_operations fops = {0};
 
 /**
  * \brief Major number.
@@ -103,7 +103,7 @@ static DEFINE_MUTEX(chardev_mutex);
  * \param filep file.
  * \return 0 if success, other value for failure.
  */
-static int chardev_dev_open(struct inode* inodep, struct file* filep)
+static int chardev_open(struct inode* inodep, struct file* filep)
 {
     if(!mutex_trylock(&chardev_mutex))
     {
@@ -121,7 +121,7 @@ static int chardev_dev_open(struct inode* inodep, struct file* filep)
  * \param filep file.
  * \return 0 if success, other value for failure.
  */
-static int chardev_dev_release(struct inode* inodep, struct file* filep)
+static int chardev_release(struct inode* inodep, struct file* filep)
 {
     number_open--;
     printk(KERN_INFO "%s.%d: release (%zu)\n", name, cookie, number_open);
@@ -137,7 +137,7 @@ static int chardev_dev_release(struct inode* inodep, struct file* filep)
  * \param offset offset of the buffer.
  * \return number of character read.
  */
-static ssize_t chardev_dev_read(struct file* filep, char* buffer, size_t len,
+static ssize_t chardev_read(struct file* filep, char* buffer, size_t len,
         loff_t* offset)
 {
     int err = 0;
@@ -172,7 +172,7 @@ static ssize_t chardev_dev_read(struct file* filep, char* buffer, size_t len,
  * \param offset offset of the buffer.
  * \return number of character read.
  */
-static ssize_t chardev_dev_write(struct file* filep, const char* buffer,
+static ssize_t chardev_write(struct file* filep, const char* buffer,
         size_t len, loff_t* offset)
 {
     printk(KERN_INFO "%s.%d: wants to write %zu bytes\n", name, cookie, len);
@@ -184,6 +184,7 @@ static ssize_t chardev_dev_write(struct file* filep, const char* buffer,
 
     if(copy_from_user(message, buffer, len) != 0)
     {
+        message_size = 0;
         return -EFAULT;
     }
     message_size = len;
@@ -204,10 +205,10 @@ static int __init chardev_init(void)
     printk(KERN_INFO "%s.%d: initialization\n", name, cookie);
 
     /* initialize fops */
-    fops.open = chardev_dev_open;
-    fops.release = chardev_dev_release;
-    fops.read = chardev_dev_read;
-    fops.write = chardev_dev_write;
+    fops.open = chardev_open;
+    fops.release = chardev_release;
+    fops.read = chardev_read;
+    fops.write = chardev_write;
 
     /* register major number (dynamically) */
     major_number = register_chrdev(0, DEVICE_NAME, &fops);
@@ -266,9 +267,9 @@ module_exit(chardev_exit);
 
 /* parameters */
 module_param(name, charp, S_IRUGO);
-MODULE_PARM_DESC(name, "Name of the module"); 
-module_param(cookie, int, (S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR)); 
-MODULE_PARM_DESC(cookie, "Cookie value"); 
+MODULE_PARM_DESC(name, "Name of the module");
+module_param(cookie, int, (S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR));
+MODULE_PARM_DESC(cookie, "Cookie value");
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sebastien Vincent");
