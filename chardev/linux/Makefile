@@ -1,22 +1,9 @@
 obj-m += chardev.o
-CFLAGS_BIN =-std=c11 -Wall -Wextra -Werror -Wstrict-prototypes \
-			-Wredundant-decls -Wshadow -pedantic -pedantic-errors \
-			-fno-strict-aliasing -D_XOPEN_SOURCE=700 -O2 
-BIN = chardev_userspace
 
-all: $(BIN) module
-
-.c.o:
-	$(CC) -c $(CFLAGS_BIN) $< -o $@
-
-$(BIN): $(BIN).o
-	$(CC) -o $(BIN) -O $(BIN).o
-
-module:
+all: 
 	make -C /lib/modules/$(shell uname -r)/build/ M=$(CURDIR) modules
 
 clean:
-	rm -f $(BIN) *.o
 	make -C /lib/modules/$(shell uname -r)/build/ M=$(CURDIR) clean
 
 install:
