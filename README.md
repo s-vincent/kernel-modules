@@ -10,6 +10,6 @@ This repository contains the following samples:
 
 ## License
 
-All of the modules are under BSD-3 license except Linux version of chardev which
+All modules are under BSD-3 license except Linux version of chardev which
 is under GPLv2.
 
