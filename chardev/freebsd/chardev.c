@@ -121,6 +121,11 @@ static int chardev_read(struct cdev* dev, struct uio* uio, int ioflags)
     printf("%s.%d: wants to read at most %zu bytes\n", name, cookie,
         uio->uio_resid);
 
+    if(uio->uio_resid < message_size)
+    {
+        return -EFBIG;
+    }
+
     err = uiomove(message, message_size, uio);
     if(err == 0)
     {

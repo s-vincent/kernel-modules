@@ -144,6 +144,11 @@ static ssize_t chardev_read(struct file* filep, char* buffer, size_t len,
     printk(KERN_INFO "%s.%d: wants to read at most %zu bytes\n", name, cookie,
             len);
 
+    if(len < message_size)
+    {
+        return -EFBIG;
+    }
+
     err = copy_to_user(buffer, message, message_size);
 
     if(err == 0)
