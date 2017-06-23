@@ -1,5 +1,5 @@
 /*
- * irq - IRQ handler kernel module.
+ * irq-handler - IRQ handler kernel module.
  * Copyright (c) 2017, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.
@@ -7,7 +7,7 @@
  */
 
 /**
- * \file irq.c
+ * \file irq-handler.c
  * \brief IRQ handler module for GNU/Linux.
  * \author Sebastien Vincent
  * \date 2017
