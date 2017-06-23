@@ -8,8 +8,9 @@ This repository contains the following samples:
 * chardev: basic character device that handles open/close/read/write operations
   (i.e. bufferize data with write() and returns them with read());
 * proc (GNU/Linux only): simple /proc entry;
-* ioctl: character device with ioctl support.
-
+* ioctl: character device with ioctl support;
+* irq (GNU/Linux only): different ways to handle IRQ (handler, tasklet,
+  workqueue, threaded).
 ## License
 
 All modules are under BSD-3 license.
