@@ -1,16 +1,31 @@
-obj-m += helloworld.o
+ifneq (${KERNELRELEASE},)
 
-all:
-	make -C /lib/modules/$(shell uname -r)/build/ M=$(CURDIR) modules
+	obj-m = helloworld.o
+else
 
-clean:
-	make -C /lib/modules/$(shell uname -r)/build/ M=$(CURDIR) clean
+	KERNELDIR        ?= /lib/modules/$(shell uname -r)/build
+	MODULE_DIR       ?= $(shell pwd)
+	ARCH             ?= $(shell uname -i)
+	CROSS_COMPILE    ?=
+	INSTALL_MOD_PATH ?= /
 
-install:
-	make -C /lib/modules/$(shell uname -r)/build/ M=$(CURDIR) modules_install
+all: modules
+
+modules:
+	${MAKE} ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} -C ${KERNELDIR} SUBDIRS=${MODULE_DIR}  modules
+
+modules_install:
+	${MAKE} ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} INSTALL_MOD_PATH=${INSTALL_MOD_PATH} -C ${KERNELDIR} SUBDIRS=${MODULE_DIR}  modules_install
 	depmod -a
 
 uninstall:
 	rm /lib/modules/$(shell uname -r)/extra/helloworld.ko
 	depmod -a
+
+clean:
+	rm -f *.o *.ko *.mod.c .*.o .*.ko .*.mod.c .*.cmd *~
+	rm -f Module.symvers Module.markers modules.order
+	rm -rf .tmp_versions
+endif
+
 

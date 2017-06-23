@@ -1,5 +1,5 @@
 /*
- * helloworld - simple hello world FreeBSD kernel module.
+ * helloworld - simple hello world kernel module.
  * Copyright (c) 2016, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.

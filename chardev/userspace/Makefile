@@ -6,7 +6,7 @@ BIN = chardev_userspace
 all: $(BIN)
 
 .c.o:
-	$(CC) -c $(CFLAGS_BIN) $< -o $@
+	$(CC) -c $(CFLAGS) $< -o $@
 
 $(BIN): $(BIN).o
 	$(CC) -o $(BIN) -O $(BIN).o

@@ -1,5 +1,5 @@
 /*
- * chardev - basic character device FreeBSD kernel module.
+ * chardev - basic character device kernel module.
  * Copyright (c) 2016, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.
@@ -29,14 +29,19 @@ static d_write_t chardev_write;
 static d_read_t chardev_read;
 
 /**
- * \brief Name of the module.
+ * \brief Name of the module (configuration parameter).
  */
 static char name[1024] = "chardev";
 
 /**
- * \brief Cookie value.
+ * \brief Cookie value (configuration parameter).
  */
 static int cookie = 0;
+
+/**
+ * \brief Mutex to have only one process to open and use device.
+ */
+static struct mtx mutex_chardev;
 
 /**
  * \brief Character device specifications.
@@ -59,17 +64,17 @@ static struct cdev* chardev_cdev = NULL;
 /**
  * \brief Number of times device is opened.
  */
-size_t number_open = 0;
+size_t g_number_open = 0;
 
 /**
  * \brief Message buffer in kernel side for the device.
  */
-static char message[1024];
+static char g_message[1024];
 
 /**
- * \brief Size of message stored in kernel side.
+ * \brief Size of g_message stored in kernel side.
  */
-static size_t message_size = 0;
+static size_t g_message_size = 0;
 
 /**
  * \brief Open callback for character device.
@@ -84,8 +89,8 @@ static int chardev_open(struct cdev* dev, int oflags, int devtype,
 {
     int err = 0;
 
-    number_open++;
-    printf("%s.%d: open (%zu)\n", name, cookie, number_open);
+    g_number_open++;
+    printf("%s.%d: open (%zu)\n", name, cookie, g_number_open);
     return err;
 }
 
@@ -102,8 +107,8 @@ static int chardev_close(struct cdev* dev, int oflags, int devtype,
 {
     int err = 0;
 
-    number_open--;
-    printf("%s.%d: close (%zu)\n", name, cookie, number_open);
+    g_number_open--;
+    printf("%s.%d: close (%zu)\n", name, cookie, g_number_open);
     return err;
 }
 
@@ -117,27 +122,39 @@ static int chardev_close(struct cdev* dev, int oflags, int devtype,
 static int chardev_read(struct cdev* dev, struct uio* uio, int ioflags)
 {
     int err = 0;
+    ssize_t len_msg = 0;
+    ssize_t len = uio->uio_resid;
+    off_t offset = uio->uio_offset;
 
-    printf("%s.%d: wants to read at most %zu bytes\n", name, cookie,
-        uio->uio_resid);
+    printf("%s.%d: wants to read %zu bytes from %ld offset\n", name, cookie,
+        len, offset);
 
-    if(uio->uio_resid < message_size)
+    /* calculate buffer size left to copy */
+    len_msg = g_message_size - offset;
+
+    if(len_msg == 0)
     {
-        return -EFBIG;
+        /* EOF */
+        return 0;
+    }
+    else if(len_msg > len)
+    {
+        len_msg = len;
+    }
+    else if(len_msg < 0)
+    {
+        return -EINVAL;
     }
 
-    err = uiomove(message, message_size, uio);
+    err = uiomove(g_message + offset, len_msg, uio);
     if(err == 0)
     {
-        size_t snd = message_size;
-
-        message_size = 0;
-        printf("%s.%d: sent %zu characters to user\n", name, cookie, snd);
+        printf("%s.%d: sent %zu characters to user\n", name, cookie, len_msg);
         return 0;
     }
 
     printf("%s.%d: failed to send %zu characters to user\n", name, cookie,
-        message_size);
+        len_msg);
     return -EFAULT;
 }
 
@@ -151,23 +168,34 @@ static int chardev_read(struct cdev* dev, struct uio* uio, int ioflags)
 static int chardev_write(struct cdev* dev, struct uio* uio, int ioflags)
 {
     int err = 0;
-    size_t resid = uio->uio_resid;
+    ssize_t len_msg = uio->uio_resid + uio->uio_offset;
+    ssize_t len = uio->uio_resid;
+    off_t offset = uio->uio_offset;
 
-    if(resid > sizeof(message) - 1)
+    printf("%s.%d: wants to write %zu bytes from %ld offset\n", name, cookie,
+        len, offset);
+
+    if(len_msg > sizeof(g_message))
     {
         return -EFBIG;
     }
 
-    message_size = uio->uio_resid;
-    err = uiomove(message, uio->uio_resid, uio);
+    err = uiomove(g_message + offset, len, uio);
 
     if(err != 0)
     {
-        message_size = 0;
+        g_message_size = 0;
         return -EFAULT;
     }
 
-    printf("%s.%d: received %zu characters from user\n", name, cookie, resid);
+    if(offset == 0)
+    {
+        g_message_size = 0;
+    }
+
+    g_message_size += len;
+
+    printf("%s.%d: received %zu characters from user\n", name, cookie, len);
     return 0;
 }
 
@@ -198,14 +226,19 @@ static int chardev_loader(struct module* m, int evt, void* arg)
         break;
     }
 
+    mtx_init(&mutex_chardev, "Chardev lock", NULL, MTX_DEF);
     break;
   case MOD_UNLOAD:
+
+    mtx_destroy(&mutex_chardev);
     if(chardev_cdev)
     {
         destroy_dev(chardev_cdev);
     }
     
     printf("%s.%d: finalization\n", name, cookie);
+    break;
+  case MOD_QUIESCE:
     break;
   default:
     err = EOPNOTSUPP;

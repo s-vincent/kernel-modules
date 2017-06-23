@@ -1,5 +1,5 @@
 /*
- * chardev - basic character device kernel module.
+ * chardev2 - basic character device kernel module.
  * Copyright (c) 2016, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.
@@ -7,7 +7,7 @@
  */
 
 /**
- * \file chardev.c
+ * \file chardev2.c
  * \brief Basic character device module for GNU/Linux.
  * \author Sebastien Vincent
  * \date 2016-2017
@@ -16,8 +16,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/device.h>
-#include <linux/cdev.h>
+#include <linux/miscdevice.h>
 #include <linux/fs.h>
 
 #include <asm/uaccess.h>
@@ -25,45 +24,20 @@
 /* forward declarations */
 static int chardev_open(struct inode* inodep, struct file* filep);
 static int chardev_release(struct inode* inodep, struct file* filep);
-static ssize_t chardev_read(struct file* filep, char* __user u_buffer,
+static ssize_t chardev_write(struct file* filep, const char* buffer,
         size_t len, loff_t* offset);
-static ssize_t chardev_write(struct file* filep, const char* __user u_buffer,
-        size_t len, loff_t* offset);
-
-/**
- * \brief Class name.
- */
-static const char* const CLASS_NAME = "test";
+static ssize_t chardev_read(struct file* filep, char* buffer, size_t len,
+        loff_t* offset);
 
 /**
  * \brief Name of the module (configuration parameter).
  */
-static char* name = "chardev";
+static char* name = "chardev2";
 
 /**
  * \brief Cookie value (configuration parameter).
  */
 static int cookie = 0;
-
-/**
- * \brief Major number.
- */
-static int major = 0;
-
-/**
- * \brief The device class.
- */
-static struct class* chardev_class = NULL;
-
-/**
- * \brief The device numbers.
- */
-static dev_t chardev_dev = MKDEV(0, 0);
-
-/**
- * \brief The device.
- */
-static struct cdev chardev_cdev;
 
 /**
  * \brief Message in kernel side for the device.
@@ -94,6 +68,15 @@ static struct file_operations fops = {
     .release = chardev_release,
     .read = chardev_read,
     .write = chardev_write,
+};
+
+/**
+ * \brief Structure to register the misc driver.
+ */
+static struct miscdevice chardev_misc = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name  = THIS_MODULE->name,
+    .fops  = &fops,
 };
 
 /**
@@ -136,8 +119,8 @@ static int chardev_release(struct inode* inodep, struct file* filep)
  * \param offset offset of the buffer.
  * \return number of characters read, or negative value if failure.
  */
-static ssize_t chardev_read(struct file* filep, char* __user u_buffer,
-        size_t len, loff_t* offset)
+static ssize_t chardev_read(struct file* filep, char* u_buffer, size_t len,
+        loff_t* offset)
 {
     int err = 0;
     ssize_t len_msg = 0;
@@ -189,7 +172,7 @@ static ssize_t chardev_read(struct file* filep, char* __user u_buffer,
  * \param offset offset of the buffer.
  * \return number of characters written, or negative value if failure.
  */
-static ssize_t chardev_write(struct file* filep, const char* __user u_buffer,
+static ssize_t chardev_write(struct file* filep, const char* u_buffer,
         size_t len, loff_t* offset)
 {
     ssize_t len_msg = len + *offset;
@@ -233,55 +216,14 @@ static int __init chardev_init(void)
 
     printk(KERN_INFO "%s.%d: initialization\n", name, cookie);
 
-    /* register major number */
-    if(major == 0)
-    {
-        ret = alloc_chrdev_region(&chardev_dev, 0, 1, THIS_MODULE->name);
-    }
-    else
-    {
-        chardev_dev = MKDEV(major, 0);
-        ret = register_chrdev_region(chardev_dev, 1, THIS_MODULE->name);
-    }
-
-    if(ret < 0)
-    {
-        printk(KERN_ALERT "%s.%d failed to register a major number\n", name,
-            cookie);
-        return ret;
-    }
-
-    printk(KERN_INFO "%s.%d registered correctly a major number (%d)\n", name,
-            cookie, major);
-
-    /* register class */
-    chardev_class = class_create(THIS_MODULE, CLASS_NAME);
-    if(IS_ERR(chardev_class))
-    {
-        unregister_chrdev(major, THIS_MODULE->name);
-        printk(KERN_ALERT "%s.%d failed to register device class\n", name,
-            cookie);
-        return PTR_ERR(chardev_class);
-    }
-    printk(KERN_INFO "%s.%d device class registered correctly\n", name, cookie);
-
     /* register device */
-    if(device_create(chardev_class, NULL, chardev_dev, NULL,
-                    THIS_MODULE->name) == NULL)
-    {
-        class_destroy(chardev_class);
-        unregister_chrdev(major, THIS_MODULE->name);
-        printk(KERN_ALERT "%s.%d failed to create the device\n", name, cookie);
-        return PTR_ERR(NULL);
-    }
-    
-    cdev_init(&chardev_cdev, &fops);
-    ret = cdev_add(&chardev_cdev, chardev_dev, 1);
+    ret = misc_register(&chardev_misc);
 
     if(ret == 0)
-    {
+    { 
         printk(KERN_INFO "%s.%d device created correctly\n", name, cookie);
     }
+
     return ret;
 }
 
@@ -292,11 +234,8 @@ static int __init chardev_init(void)
  */
 static void __exit chardev_exit(void)
 {
-    cdev_del(&chardev_cdev);
-    device_destroy(chardev_class, chardev_dev);
-    class_destroy(chardev_class);
-    unregister_chrdev_region(chardev_dev, 1);
     mutex_destroy(&mutex_chardev);
+    misc_deregister(&chardev_misc);
     printk(KERN_INFO "%s.%d: exit\n", name, cookie);
 }
 

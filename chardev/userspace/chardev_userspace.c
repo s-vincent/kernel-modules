@@ -1,20 +1,9 @@
 /*
  * chardev_userspace - userspace program to interact with chardev module.
- * Copyright (C) 2016 Sebastien Vincent <sebastien.vincent@cppextrem.com>
+ * Copyright (c) 2016, Sebastien Vincent
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * Distributed under the terms of the BSD 3-clause License.
+ * See the LICENSE file for details.
  */
 
 /**
@@ -41,12 +30,13 @@
  */
 int main(int argc, char** argv)
 {
-    int fd = open("/dev/chardev", O_RDWR);
+    int fd = -1;
     char buf[1024];
     const char* input = argc > 1 ? argv[1] : "Test echo!";
     size_t input_len = argc > 1 ? strlen(argv[1]) : sizeof("Test echo!");
     ssize_t nb = 0;
 
+    fd = open("/dev/chardev", O_RDWR);
     if(fd == -1)
     {
         perror("open");
@@ -58,6 +48,15 @@ int main(int argc, char** argv)
     {
         perror("write");
         close(fd);
+        exit(EXIT_FAILURE);
+    }
+
+    close(fd);
+
+    fd = open("/dev/chardev", O_RDWR);
+    if(fd == -1)
+    {
+        perror("open");
         exit(EXIT_FAILURE);
     }
 
