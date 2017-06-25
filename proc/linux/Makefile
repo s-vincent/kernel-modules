@@ -4,6 +4,11 @@ ifneq (${KERNELRELEASE},)
 else
 
 	KERNELDIR        ?= /lib/modules/$(shell uname -r)/build
+
+	ifneq (${KERNEL_SRC},)
+		KERNELDIR := ${KERNEL_SRC}
+	endif
+
 	MODULE_DIR       ?= $(shell pwd)
 	ARCH             ?= $(shell uname -i)
 	CROSS_COMPILE    ?=
