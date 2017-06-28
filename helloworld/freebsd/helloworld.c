@@ -26,6 +26,11 @@
 static char name[1024] = "helloworld";
 
 /**
+ * \brief String value.
+ */
+static char value[1024] = "helloworld";
+
+/**
  * \brief Cookie value.
  */
 static int cookie = 0;
@@ -44,12 +49,13 @@ static int helloworld_loader(struct module* m, int evt, void* arg)
   switch(evt)
   {
   case MOD_LOAD:
-    TUNABLE_STR_FETCH("helloworld.name", name, sizeof(name));
+    TUNABLE_STR_FETCH("helloworld.value", name, sizeof(name));
     TUNABLE_INT_FETCH("helloworld.cookie", &cookie);
-    printf("%s.%d: initialization\n", name, cookie);
+    printf("%s: initialization\n", name);
+    printf("%s: value=%s cookie=%d\n", name, value, cookie);
     break;
   case MOD_UNLOAD:
-    printf("%s.%d: finalization\n", name, cookie);
+    printf("%s: finalization\n", name);
     break;
   default:
     err = EOPNOTSUPP;

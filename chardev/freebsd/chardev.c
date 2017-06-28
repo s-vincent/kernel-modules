@@ -34,16 +34,6 @@ static d_read_t chardev_read;
 static char name[1024] = "chardev";
 
 /**
- * \brief Cookie value (configuration parameter).
- */
-static int cookie = 0;
-
-/**
- * \brief Mutex to have only one process to open and use device.
- */
-static struct mtx mutex_chardev;
-
-/**
  * \brief Character device specifications.
  */
 static struct cdevsw chardev_cdevsw =
@@ -60,6 +50,11 @@ static struct cdevsw chardev_cdevsw =
  * \brief The character device.
  */
 static struct cdev* chardev_cdev = NULL;
+
+/**
+ * \brief Mutex to have only one process to open and use device.
+ */
+static struct mtx mutex_chardev;
 
 /**
  * \brief Number of times device is opened.
@@ -89,8 +84,14 @@ static int chardev_open(struct cdev* dev, int oflags, int devtype,
 {
     int err = 0;
 
+    if(!mtx_trylock(&mutex_kioctl))
+    {
+        printf("%s mutex already locked!\n", name);
+        return -EBUSY;
+    }
+
     g_number_open++;
-    printf("%s.%d: open (%zu)\n", name, cookie, g_number_open);
+    printf("%s: open (%zu)\n", name, g_number_open);
     return err;
 }
 
@@ -108,7 +109,9 @@ static int chardev_close(struct cdev* dev, int oflags, int devtype,
     int err = 0;
 
     g_number_open--;
-    printf("%s.%d: close (%zu)\n", name, cookie, g_number_open);
+    mtx_unlock(&mutex_kioctl);
+
+    printf("%s: close (%zu)\n", name, g_number_open);
     return err;
 }
 
@@ -126,7 +129,7 @@ static int chardev_read(struct cdev* dev, struct uio* uio, int ioflags)
     ssize_t len = uio->uio_resid;
     off_t offset = uio->uio_offset;
 
-    printf("%s.%d: wants to read %zu bytes from %ld offset\n", name, cookie,
+    printf("%s: wants to read %zu bytes from %ld offset\n", name,
         len, offset);
 
     /* calculate buffer size left to copy */
@@ -149,11 +152,11 @@ static int chardev_read(struct cdev* dev, struct uio* uio, int ioflags)
     err = uiomove(g_message + offset, len_msg, uio);
     if(err == 0)
     {
-        printf("%s.%d: sent %zu characters to user\n", name, cookie, len_msg);
+        printf("%s: sent %zu characters to user\n", name, len_msg);
         return 0;
     }
 
-    printf("%s.%d: failed to send %zu characters to user\n", name, cookie,
+    printf("%s: failed to send %zu characters to user\n", name,
         len_msg);
     return -EFAULT;
 }
@@ -172,7 +175,7 @@ static int chardev_write(struct cdev* dev, struct uio* uio, int ioflags)
     ssize_t len = uio->uio_resid;
     off_t offset = uio->uio_offset;
 
-    printf("%s.%d: wants to write %zu bytes from %ld offset\n", name, cookie,
+    printf("%s: wants to write %zu bytes from %ld offset\n", name,
         len, offset);
 
     if(len_msg > sizeof(g_message))
@@ -195,7 +198,7 @@ static int chardev_write(struct cdev* dev, struct uio* uio, int ioflags)
 
     g_message_size += len;
 
-    printf("%s.%d: received %zu characters from user\n", name, cookie, len);
+    printf("%s: received %zu characters from user\n", name, len);
     return 0;
 }
 
@@ -213,9 +216,7 @@ static int chardev_loader(struct module* m, int evt, void* arg)
   switch(evt)
   {
   case MOD_LOAD:
-    TUNABLE_STR_FETCH("chardev.name", name, sizeof(name));
-    TUNABLE_INT_FETCH("chardev.cookie", &cookie);
-    printf("%s.%d: initialization\n", name, cookie);
+    printf("%s: initialization\n", name);
 
     err = make_dev_p(MAKEDEV_CHECKNAME | MAKEDEV_WAITOK,
         &chardev_cdev, &chardev_cdevsw, 0, UID_ROOT, GID_WHEEL, 0666,
@@ -229,14 +230,13 @@ static int chardev_loader(struct module* m, int evt, void* arg)
     mtx_init(&mutex_chardev, "Chardev lock", NULL, MTX_DEF);
     break;
   case MOD_UNLOAD:
-
     mtx_destroy(&mutex_chardev);
     if(chardev_cdev)
     {
         destroy_dev(chardev_cdev);
     }
     
-    printf("%s.%d: finalization\n", name, cookie);
+    printf("%s: finalization\n", name);
     break;
   case MOD_QUIESCE:
     break;

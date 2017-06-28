@@ -36,11 +36,6 @@ static d_ioctl_t kioctl_ioctl;
 static const char* const name = "kioctl";
 
 /**
- * \brief Mutex to have only one process to open and use device.
- */
-static struct mtx mutex_kioctl;
-
-/**
  * \brief Character device specifications.
  */
 static struct cdevsw kioctl_cdevsw =
@@ -57,6 +52,11 @@ static struct cdevsw kioctl_cdevsw =
  * \brief The character device.
  */
 static struct cdev* kioctl_cdev = NULL;
+
+/**
+ * \brief Mutex to have only one process to open and use device.
+ */
+static struct mtx mutex_kioctl;
 
 /**
  * \brief Number of times device is opened.
@@ -81,6 +81,12 @@ static int kioctl_open(struct cdev* dev, int oflags, int devtype,
 {
     int err = 0;
 
+    if(!mtx_trylock(&mutex_kioctl))
+    {
+        printf("%s mutex already locked!\n", name);
+        return -EBUSY;
+    }
+
     g_number_open++;
     printf("%s: open (%zu)\n", name, g_number_open);
     return err;
@@ -100,6 +106,8 @@ static int kioctl_close(struct cdev* dev, int oflags, int devtype,
     int err = 0;
 
     g_number_open--;
+    mtx_unlock(&mutex_kioctl);
+
     printf("%s: close (%zu)\n", name, g_number_open);
     return err;
 }

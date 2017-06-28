@@ -29,8 +29,10 @@ modules_install:
 	depmod -a
 
 modules_uninstall:
-	rm /etc/udev/rules.d/99-irq-handler.rules
 	rm /lib/modules/$(shell uname -r)/extra/irq-handler.ko
+	rm /lib/modules/$(shell uname -r)/extra/irq-tasklet.ko
+	rm /lib/modules/$(shell uname -r)/extra/irq-workqueue.ko
+	rm /lib/modules/$(shell uname -r)/extra/irq-threaded.ko
 	depmod -a
 
 clean:

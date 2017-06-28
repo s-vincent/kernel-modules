@@ -99,12 +99,13 @@ static irqreturn_t irq_workqueue_handler(int irq, void* ident)
 static int __init irq_workqueue_init(void)
 {
     int flags = 0;
+    int ret = 0;
 
     printk(KERN_INFO "%s: initialization\n", THIS_MODULE->name);
 
     if(irq_number == -1)
     {
-      printk(KERN_ERR "%s: Bad IRQ number %d\n", THIS_MODULE->name, irq_number);
+      printk(KERN_ERR "%s: bad IRQ number %d\n", THIS_MODULE->name, irq_number);
       return -EINVAL;
     }
 
@@ -117,12 +118,14 @@ static int __init irq_workqueue_init(void)
     printk(KERN_INFO "%s: try to register IRQ %d flags 0x%x\n",
         THIS_MODULE->name, irq_number, flags);
 
-    if(request_irq(irq_number, irq_workqueue_handler, flags, "IRQ workqueue",
-          THIS_MODULE->name) != 0)
+    ret = request_irq(irq_number, irq_workqueue_handler, flags, "IRQ workqueue",
+          THIS_MODULE->name);
+
+    if(ret != 0)
     {
-        printk(KERN_ERR "%s: Failed to register workqueue IRQ\n",
+        printk(KERN_ERR "%s: failed to register workqueue IRQ\n",
                 THIS_MODULE->name);
-        return -1;
+        return ret;
     }
     return 0;
 }

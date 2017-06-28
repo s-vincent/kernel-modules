@@ -30,16 +30,6 @@ static ssize_t chardev_read(struct file* filep, char* buffer, size_t len,
         loff_t* offset);
 
 /**
- * \brief Name of the module (configuration parameter).
- */
-static char* name = "chardev2";
-
-/**
- * \brief Cookie value (configuration parameter).
- */
-static int cookie = 0;
-
-/**
  * \brief Message in kernel side for the device.
  */
 static char g_message[1024] = {0};
@@ -89,11 +79,11 @@ static int chardev_open(struct inode* inodep, struct file* filep)
 {
     if(!mutex_trylock(&mutex_chardev))
     {
-        printk(KERN_ALERT "%s.%d mutex already locked!\n", name, cookie);
+        printk(KERN_ALERT "%s: mutex already locked!\n", THIS_MODULE->name);
         return -EBUSY;
     }
     g_number_open++;
-    printk(KERN_INFO "%s.%d: open (%zu)\n", name, cookie, g_number_open);
+    printk(KERN_INFO "%s: open (%zu)\n", THIS_MODULE->name, g_number_open);
     return 0;
 }
 
@@ -106,7 +96,7 @@ static int chardev_open(struct inode* inodep, struct file* filep)
 static int chardev_release(struct inode* inodep, struct file* filep)
 {
     g_number_open--;
-    printk(KERN_INFO "%s.%d: release (%zu)\n", name, cookie, g_number_open);
+    printk(KERN_INFO "%s: release (%zu)\n", THIS_MODULE->name, g_number_open);
     mutex_unlock(&mutex_chardev);
     return 0;
 }
@@ -125,8 +115,8 @@ static ssize_t chardev_read(struct file* filep, char* u_buffer, size_t len,
     int err = 0;
     ssize_t len_msg = 0;
 
-    printk(KERN_INFO "%s.%d: wants to read %zu bytes from offset %lld\n", name,
-            cookie, len, *offset);
+    printk(KERN_INFO "%s: wants to read %zu bytes from offset %lld\n",
+            THIS_MODULE->name, len, *offset);
 
     /* calculate buffer size left to copy */
     len_msg = g_message_size - *offset;
@@ -150,7 +140,7 @@ static ssize_t chardev_read(struct file* filep, char* u_buffer, size_t len,
     if(err == 0)
     {
         /* success */
-        printk(KERN_DEBUG "%s.%d sent %zu characters to user\n", name, cookie,
+        printk(KERN_DEBUG "%s: sent %zu characters to user\n", THIS_MODULE->name,
                 len_msg);
 
         *offset += len_msg;
@@ -158,8 +148,8 @@ static ssize_t chardev_read(struct file* filep, char* u_buffer, size_t len,
     }
     else
     {
-        printk(KERN_DEBUG "%s.%d failed to send %zu characters to user\n",
-                name, cookie, len_msg);
+        printk(KERN_DEBUG "%s: failed to send %zu characters to user\n",
+                THIS_MODULE->name, len_msg);
         return -EFAULT;
     }
 }
@@ -177,8 +167,8 @@ static ssize_t chardev_write(struct file* filep, const char* u_buffer,
 {
     ssize_t len_msg = len + *offset;
 
-    printk(KERN_INFO "%s.%d: wants to write %zu bytes from %lld offset\n", name,
-            cookie, len, *offset);
+    printk(KERN_INFO "%s: wants to write %zu bytes from %lld offset\n",
+            THIS_MODULE->name, len, *offset);
 
     if(len_msg > sizeof(g_message))
     {
@@ -199,7 +189,7 @@ static ssize_t chardev_write(struct file* filep, const char* u_buffer,
     g_message_size += len;
     *offset += len;
 
-    printk(KERN_INFO "%s.%d received %zu characters from user\n", name, cookie,
+    printk(KERN_INFO "%s: received %zu characters from user\n", THIS_MODULE->name,
         len);
     return len;
 }
@@ -214,14 +204,14 @@ static int __init chardev_init(void)
 {
     int ret = 0;
 
-    printk(KERN_INFO "%s.%d: initialization\n", name, cookie);
+    printk(KERN_INFO "%s: initialization\n", THIS_MODULE->name);
 
     /* register device */
     ret = misc_register(&chardev_misc);
 
     if(ret == 0)
     { 
-        printk(KERN_INFO "%s.%d device created correctly\n", name, cookie);
+        printk(KERN_INFO "%s: device created correctly\n", THIS_MODULE->name);
     }
 
     return ret;
@@ -236,18 +226,12 @@ static void __exit chardev_exit(void)
 {
     mutex_destroy(&mutex_chardev);
     misc_deregister(&chardev_misc);
-    printk(KERN_INFO "%s.%d: exit\n", name, cookie);
+    printk(KERN_INFO "%s: exit\n", THIS_MODULE->name);
 }
 
 /* entry/exit points of the module */
 module_init(chardev_init);
 module_exit(chardev_exit);
-
-/* configuration parameters */
-module_param(name, charp, S_IRUGO);
-MODULE_PARM_DESC(name, "Name of the module");
-module_param(cookie, int, (S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR));
-MODULE_PARM_DESC(cookie, "Cookie value");
 
 MODULE_LICENSE("Dual BSD/GPL");
 MODULE_AUTHOR("Sebastien Vincent");
