@@ -34,8 +34,6 @@ modules:
 
 modules_install:
 	${MAKE} ARCH=${ARCH} CROSS_COMPILE=${CROSS_COMPILE} INSTALL_MOD_PATH=${INSTALL_MOD_PATH} -C ${KERNELDIR} SUBDIRS=${MODULE_DIR}  modules_install
-	cp 99-irq-handler.rules /etc/udev/rules.d/
-	chmod 644 /etc/udev/rules.d/99-irq-handler.rules
 	depmod -a
 
 modules_uninstall:
