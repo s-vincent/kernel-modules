@@ -14,7 +14,9 @@ For GNU/Linux only:
 * irq: different ways to handle IRQ (handler, tasklet, workqueue, threaded);
 * proc: simple /proc entry;
 * thread: thread worker;
-* timer: simple timer and high-resolution timer.
+* timer: simple timer and high-resolution timer;
+* waitqueue: simple waitqueue notification for character device;
+* mmap: character device with mmap to share kernel buffer.
 
 ## License
 
