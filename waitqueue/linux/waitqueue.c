@@ -1,0 +1,327 @@
+/*
+ * waitqueue - waitqueue device kernel module.
+ * Copyright (c) 2016, Sebastien Vincent
+ *
+ * Distributed under the terms of the BSD 3-clause License.
+ * See the LICENSE file for details.
+ */
+
+/**
+ * \file waitqueue.c
+ * \brief Waitqueue device module for GNU/Linux.
+ * \author Sebastien Vincent
+ * \date 2017
+ */
+
+#include <linux/init.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/miscdevice.h>
+#include <linux/fs.h>
+#include <linux/sched.h>
+#include <linux/wait.h>
+
+#include <asm/uaccess.h>
+
+/**
+ * \def MSG_ARRAY_SIZE.
+ * \brief Size of the messages array.
+ */
+#define MSG_ARRAY_SIZE 10
+
+/* forward declarations */
+static int waitqueue_open(struct inode* inodep, struct file* filep);
+static int waitqueue_release(struct inode* inodep, struct file* filep);
+static ssize_t waitqueue_write(struct file* filep, const char* buffer,
+        size_t len, loff_t* offset);
+static ssize_t waitqueue_read(struct file* filep, char* buffer, size_t len,
+        loff_t* offset);
+
+/**
+ * \brief The wait queue.
+ */
+DECLARE_WAIT_QUEUE_HEAD(waitqueue_wq);
+
+/**
+ * \brief Use non-blocking read() if file requests it (configuration parameter).
+ */
+static bool nonblock = 0;
+
+/**
+ * \brief Message in kernel side for the device.
+ */
+static char g_messages[MSG_ARRAY_SIZE][1024]; 
+
+/**
+ * \brief Number of message in g_message.
+ */
+static size_t g_messages_count = 0;
+
+/**
+ * \brief Spinlock to control read/write in the array.
+ */
+static spinlock_t spinlock_wq;
+
+/**
+ * \brief File operations.
+ */
+static struct file_operations fops = {
+    .owner = THIS_MODULE,
+    .open = waitqueue_open,
+    .release = waitqueue_release,
+    .read = waitqueue_read,
+    .write = waitqueue_write,
+};
+
+/**
+ * \brief Structure to register the misc driver.
+ */
+static struct miscdevice waitqueue_misc = {
+    .minor = MISC_DYNAMIC_MINOR,
+    .name  = THIS_MODULE->name,
+    .fops  = &fops,
+};
+
+/**
+ * \brief Open callback for character device.
+ * \param inodep inode.
+ * \param filep file.
+ * \return 0 if success, negative value otherwise.
+ */
+static int waitqueue_open(struct inode* inodep, struct file* filep)
+{
+    printk(KERN_INFO "%s: open\n", THIS_MODULE->name);
+    return 0;
+}
+
+/**
+ * \brief Release callback for character device.
+ * \param inodep inode.
+ * \param filep file.
+ * \return 0 if success, negative value otherwise.
+ */
+static int waitqueue_release(struct inode* inodep, struct file* filep)
+{
+    printk(KERN_INFO "%s: release\n", THIS_MODULE->name);
+    return 0;
+}
+
+/**
+ * \brief Read callback for character device.
+ * \param filep file.
+ * \param u_buffer buffer to fill.
+ * \param len length to read.
+ * \param offset offset of the buffer.
+ * \return number of characters read, or negative value if failure.
+ */
+static ssize_t waitqueue_read(struct file* filep, char* u_buffer, size_t len,
+        loff_t* offset)
+{
+    int err = 0;
+    ssize_t len_msg = 0;
+    unsigned long mask = 0;
+
+    printk(KERN_INFO "%s: wants to read %zu bytes from offset %lld\n",
+            THIS_MODULE->name, len, *offset);
+
+    spin_lock_irqsave(&spinlock_wq, mask);
+
+    while(g_messages_count == 0)
+    {
+        /* array empty, wait for item */
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+
+        /* returns now if nonblock is requested */
+        if(nonblock && filep->f_flags & O_NONBLOCK)
+        {
+            return -EAGAIN;
+        }
+
+        if(wait_event_interruptible(waitqueue_wq, (g_messages_count > 0)) != 0)
+        {
+            return -ERESTARTSYS;
+        }
+        
+        spin_lock_irqsave(&spinlock_wq, mask);
+    }
+
+    /* calculate buffer size left to copy */
+    len_msg = strlen(g_messages[0]);
+
+    if(len_msg == 0)
+    {
+        /* EOF */
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+        return 0;
+    }
+    else if(len_msg > len)
+    {
+        len_msg = len;
+    }
+    else if(len_msg < 0)
+    {
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+        return -EINVAL;
+    }
+
+    err = copy_to_user(u_buffer, g_messages[0], len_msg);
+
+    /* shift other messages */
+    if(g_messages_count > 1)
+    {
+        memmove(g_messages, g_messages + 1, (g_messages_count - 1) * 1024);
+    }
+    g_messages_count--;
+
+    spin_unlock_irqrestore(&spinlock_wq, mask);
+
+#if 1
+    /* array has at least one space left */
+    wake_up_interruptible(&waitqueue_wq);
+#endif
+
+    if(err == 0)
+    {
+        /* success */
+        printk(KERN_DEBUG "%s: sent %zu characters to user\n", THIS_MODULE->name,
+                len_msg);
+
+        /* *offset += len_msg; */
+        return len_msg;
+    }
+    else
+    {
+        printk(KERN_DEBUG "%s: failed to send %zu characters to user\n",
+                THIS_MODULE->name, len_msg);
+        return -EFAULT;
+    }
+}
+
+/**
+ * \brief Write callback for character device.
+ * \param filep file.
+ * \param u_buffer buffer that contains data to write.
+ * \param len length to write.
+ * \param offset offset of the buffer.
+ * \return number of characters written, or negative value if failure.
+ */
+static ssize_t waitqueue_write(struct file* filep, const char* u_buffer,
+        size_t len, loff_t* offset)
+{
+    ssize_t len_msg = len + *offset;
+    unsigned long mask = 0;
+
+    printk(KERN_INFO "%s: wants to write %zu bytes from %lld offset\n",
+            THIS_MODULE->name, len, *offset);
+
+    spin_lock_irqsave(&spinlock_wq, mask);
+
+#if 1
+    while(g_messages_count >= MSG_ARRAY_SIZE)
+    {
+        /* array full, wait for empty space */
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+
+        if(nonblock && filep->f_flags & O_NONBLOCK)
+        {
+            return -EAGAIN;
+        }
+
+        if(wait_event_interruptible(waitqueue_wq,
+                    (g_messages_count < MSG_ARRAY_SIZE)) != 0)
+        {
+            return -ERESTARTSYS;
+        }
+
+        spin_lock_irqsave(&spinlock_wq, mask);
+    }
+#else
+    if(g_messages_count >= MSG_ARRAY_SIZE)
+    {
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+        return -ENOMEM;
+    }
+#endif 
+
+    if(len_msg > (1024 - 1))
+    {
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+        return -E2BIG;
+    }
+
+    if(copy_from_user(g_messages[g_messages_count], u_buffer, len) != 0)
+    {
+        spin_unlock_irqrestore(&spinlock_wq, mask);
+        return -EFAULT;
+    }
+
+    g_messages[g_messages_count][len] = 0x00;
+    g_messages_count++;
+    
+    spin_unlock_irqrestore(&spinlock_wq, mask);
+ 
+    {
+    size_t i =0;
+    for(i = 0 ; i < g_messages_count ; i++)
+    {
+        printk(KERN_INFO "%s: %zu=%s\n", THIS_MODULE->name, i, g_messages[i]); 
+    }
+    }
+
+    /* array has at least one item left */
+    wake_up_interruptible(&waitqueue_wq);
+
+    *offset += len;
+    printk(KERN_INFO "%s: received %zu characters from user\n",
+            THIS_MODULE->name, len);
+    return len;
+}
+
+/**
+ * \brief Module initialization.
+ *
+ * Set up stuff when module is added.
+ * \return 0 if success, negative value otherwise.
+ */
+static int __init waitqueue_init(void)
+{
+    int ret = 0;
+
+    printk(KERN_INFO "%s: initialization\n", THIS_MODULE->name);
+
+    /* register device */
+    ret = misc_register(&waitqueue_misc);
+
+    if(ret == 0)
+    { 
+        printk(KERN_INFO "%s: device created correctly\n", THIS_MODULE->name);
+    }
+
+    spin_lock_init(&spinlock_wq); 
+
+    return ret;
+}
+
+/**
+ * \brief Module finalization.
+ *
+ * Clean up stuff when module is removed.
+ */
+static void __exit waitqueue_exit(void)
+{
+    misc_deregister(&waitqueue_misc);
+    printk(KERN_INFO "%s: exit\n", THIS_MODULE->name);
+}
+
+/* entry/exit points of the module */
+module_init(waitqueue_init);
+module_exit(waitqueue_exit);
+
+module_param(nonblock, bool, (S_IRUSR | S_IRGRP | S_IROTH | S_IWUSR));
+MODULE_PARM_DESC(nonblock, "Authorize non-blocking read() if file requests it");
+
+MODULE_LICENSE("Dual BSD/GPL");
+MODULE_AUTHOR("Sebastien Vincent");
+MODULE_DESCRIPTION("waitqueue device module");
+MODULE_VERSION("0.1");
+
