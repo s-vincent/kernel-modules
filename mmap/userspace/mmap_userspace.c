@@ -1,6 +1,6 @@
 /*
  * mmap_userspace - userspace program to interact with chardev module with mmap.
- * Copyright (c) 2016, Sebastien Vincent
+ * Copyright (c) 2017, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.
  * See the LICENSE file for details.
@@ -10,7 +10,7 @@
  * \file mmap_userspace.c
  * \brief Userspace program to test kmmap kernel module.
  * \author Sebastien Vincent
- * \date 2016
+ * \date 2017
  */
 
 #include <stdio.h>

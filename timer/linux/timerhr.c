@@ -10,7 +10,7 @@
  * \file timerhr.c
  * \brief High resolution timer kernel module for GNU/Linux.
  * \author Sebastien Vincent
- * \date 2016
+ * \date 2017
  */
 
 #include <linux/init.h>

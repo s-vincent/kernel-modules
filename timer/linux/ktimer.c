@@ -10,7 +10,7 @@
  * \file ktimer.c
  * \brief Timer kernel module for GNU/Linux.
  * \author Sebastien Vincent
- * \date 2016
+ * \date 2017
  */
 
 #include <linux/init.h>

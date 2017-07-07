@@ -1,6 +1,6 @@
 /*
  * chardev2 - basic character device kernel module.
- * Copyright (c) 2016, Sebastien Vincent
+ * Copyright (c) 2016-2017, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.
  * See the LICENSE file for details.

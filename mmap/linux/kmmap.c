@@ -1,6 +1,6 @@
 /*
  * mmap - basic character device kernel module with ioctl.
- * Copyright (c) 2016, Sebastien Vincent
+ * Copyright (c) 2017, Sebastien Vincent
  *
  * Distributed under the terms of the BSD 3-clause License.
  * See the LICENSE file for details.
@@ -10,7 +10,7 @@
  * \file mmap.c
  * \brief Basic character device module with ioctl for GNU/Linux.
  * \author Sebastien Vincent
- * \date 2016-2017
+ * \date 2017
  */
 
 #include <linux/init.h>
