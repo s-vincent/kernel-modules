@@ -40,7 +40,7 @@ static ssize_t waitqueue_read(struct file* filep, char* buffer, size_t len,
 /**
  * \brief The wait queue.
  */
-DECLARE_WAIT_QUEUE_HEAD(waitqueue_wq);
+DECLARE_WAIT_QUEUE_HEAD(wq);
 
 /**
  * \brief Use non-blocking read() if file requests it (configuration parameter).
@@ -137,7 +137,7 @@ static ssize_t waitqueue_read(struct file* filep, char* u_buffer, size_t len,
             return -EAGAIN;
         }
 
-        if(wait_event_interruptible(waitqueue_wq, (g_messages_count > 0)) != 0)
+        if(wait_event_interruptible(wq, (g_messages_count > 0)) != 0)
         {
             return -ERESTARTSYS;
         }
@@ -175,10 +175,8 @@ static ssize_t waitqueue_read(struct file* filep, char* u_buffer, size_t len,
 
     spin_unlock_irqrestore(&spinlock_wq, mask);
 
-#if 1
     /* array has at least one space left */
-    wake_up_interruptible(&waitqueue_wq);
-#endif
+    wake_up_interruptible(&wq);
 
     if(err == 0)
     {
@@ -216,7 +214,6 @@ static ssize_t waitqueue_write(struct file* filep, const char* u_buffer,
 
     spin_lock_irqsave(&spinlock_wq, mask);
 
-#if 1
     while(g_messages_count >= MSG_ARRAY_SIZE)
     {
         /* array full, wait for empty space */
@@ -227,7 +224,7 @@ static ssize_t waitqueue_write(struct file* filep, const char* u_buffer,
             return -EAGAIN;
         }
 
-        if(wait_event_interruptible(waitqueue_wq,
+        if(wait_event_interruptible(wq,
                     (g_messages_count < MSG_ARRAY_SIZE)) != 0)
         {
             return -ERESTARTSYS;
@@ -235,13 +232,6 @@ static ssize_t waitqueue_write(struct file* filep, const char* u_buffer,
 
         spin_lock_irqsave(&spinlock_wq, mask);
     }
-#else
-    if(g_messages_count >= MSG_ARRAY_SIZE)
-    {
-        spin_unlock_irqrestore(&spinlock_wq, mask);
-        return -ENOMEM;
-    }
-#endif 
 
     if(len_msg > (1024 - 1))
     {
@@ -260,16 +250,8 @@ static ssize_t waitqueue_write(struct file* filep, const char* u_buffer,
     
     spin_unlock_irqrestore(&spinlock_wq, mask);
  
-    {
-    size_t i =0;
-    for(i = 0 ; i < g_messages_count ; i++)
-    {
-        printk(KERN_INFO "%s: %zu=%s\n", THIS_MODULE->name, i, g_messages[i]); 
-    }
-    }
-
     /* array has at least one item left */
-    wake_up_interruptible(&waitqueue_wq);
+    wake_up_interruptible(&wq);
 
     *offset += len;
     printk(KERN_INFO "%s: received %zu characters from user\n",
