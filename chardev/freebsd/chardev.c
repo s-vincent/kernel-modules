@@ -84,7 +84,7 @@ static int chardev_open(struct cdev* dev, int oflags, int devtype,
 {
     int err = 0;
 
-    if(!mtx_trylock(&mutex_kioctl))
+    if(!mtx_trylock(&mutex_chardev))
     {
         printf("%s mutex already locked!\n", name);
         return -EBUSY;
@@ -109,7 +109,7 @@ static int chardev_close(struct cdev* dev, int oflags, int devtype,
     int err = 0;
 
     g_number_open--;
-    mtx_unlock(&mutex_kioctl);
+    mtx_unlock(&mutex_chardev);
 
     printf("%s: close (%zu)\n", name, g_number_open);
     return err;
