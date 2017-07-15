@@ -1,5 +1,6 @@
 # kernel-modules
-Kernel modules samples for GNU/Linux and FreeBSD OS.
+
+Kernel modules samples for GNU/Linux, FreeBSD and NetBSD.
 
 ## Contents
 
