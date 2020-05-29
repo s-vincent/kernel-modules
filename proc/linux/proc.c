@@ -18,7 +18,10 @@
 #include <linux/kernel.h>
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
+#include <linux/version.h>
+
 #include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 /* forward declarations */
 static ssize_t proc_read(struct file* filep, char* __user u_buffer,
@@ -49,11 +52,22 @@ static uint32_t g_value = 0;
 /**
  * \brief File operations.
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0)
+
+static struct proc_ops fops = {
+    .proc_read = proc_read,
+    .proc_write = proc_write,
+};
+
+#else
+
 static struct file_operations fops = {
     .owner = THIS_MODULE,
     .read = proc_read,
     .write = proc_write,
 };
+
+#endif
 
 /**
  * \brief Read callback.

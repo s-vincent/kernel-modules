@@ -18,6 +18,7 @@
 #include <linux/kernel.h>
 #include <linux/timer.h>
 #include <linux/delay.h>
+#include <linux/version.h>
 
 /**
  * \brief The timer.
@@ -28,7 +29,11 @@ struct timer_list g_timer;
  * \brief Timer callback.
  * \param arg argument.
  */
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 static void ktimer_function(unsigned long arg)
+#else
+static void ktimer_function(struct timer_list* arg)
+#endif
 {
     printk(KERN_INFO "%s: %s %lu\n", THIS_MODULE->name, __FUNCTION__, jiffies);
    
@@ -45,10 +50,12 @@ static void ktimer_function(unsigned long arg)
 static int __init ktimer_init(void)
 {
     printk(KERN_INFO "%s: initialization\n", THIS_MODULE->name);
-
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4,15,0)
     init_timer(&g_timer);
     g_timer.function = &ktimer_function;
-    g_timer.data = 42;
+#else
+    timer_setup(&g_timer, ktimer_function, 0);
+#endif
     /* HZ = number of jiffies per second, so timer triggers in 5 seconds */
     g_timer.expires = jiffies + (HZ * 5);
 

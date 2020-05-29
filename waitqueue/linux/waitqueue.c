@@ -22,6 +22,7 @@
 #include <linux/wait.h>
 
 #include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 /**
  * \def MSG_ARRAY_SIZE.

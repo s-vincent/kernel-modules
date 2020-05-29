@@ -22,6 +22,7 @@
 #include <linux/slab.h>
 
 #include <asm/uaccess.h>
+#include <asm/io.h>
 
 /* forward declarations */
 static int kmmap_open(struct inode* inodep, struct file* filep);

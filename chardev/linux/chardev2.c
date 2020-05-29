@@ -20,6 +20,7 @@
 #include <linux/fs.h>
 
 #include <asm/uaccess.h>
+#include <linux/uaccess.h>
 
 /* forward declarations */
 static int chardev_open(struct inode* inodep, struct file* filep);
